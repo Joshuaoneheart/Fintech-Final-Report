@@ -38,21 +38,21 @@ class Seq_Encode(nn.Module):
     outputs = self.decoder(outputs , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
     return outputs
 
-  def generate(self, batch, labels, length, device):
+  def generate(self, batch, labels, length, device, src_padding_mask, tgt_padding_mask):
     """
     args:
       mels: (batch size, length, 40)
     return:
       out: (batch size, n_spks)
     """
-    encoder_out = self.encoder(self.prenet(batch).permute(1, 0, 2))
+    encoder_out = self.encoder(self.prenet(batch).permute(1, 0, 2), src_key_padding_mask = src_padding_mask)
     start_ = labels[:, 0, :]
     outputs = torch.zeros(length[0], 1, 768).float().to(device)
     outputs[0, :, :] = start_.unsqueeze(0)
     for i in range(1, length[0]):
         tgtmask = (torch.triu(torch.ones(i, i)) == 1).transpose(0, 1)
         tgtmask = tgtmask.float().masked_fill(tgtmask == 0, float("-inf")).masked_fill(tgtmask == 1, float(0.0)).to(device)
-        tmp_out = self.decoder(outputs[:i, :, :] , memory = encoder_out, tgt_mask = tgtmask)
+        tmp_out = self.decoder(outputs[:i, :, :] , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask[:,:i])
         outputs[i, :, :] = tmp_out[-1, :, :]
         
     return outputs
