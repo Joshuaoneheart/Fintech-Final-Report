@@ -26,10 +26,10 @@ class Seq_Encode(nn.Module):
     tgtmask = (torch.triu(torch.ones(self.config["max_embedding_len"], self.config["max_embedding_len"])) == 1).transpose(0, 1)
     tgtmask = tgtmask.float().masked_fill(tgtmask == 0, float("-inf")).masked_fill(tgtmask == 1, float(0.0)).to(device)
     outputs = self.decoder(labels.permute(1, 0, 2) , memory = encoder_out, tgt_mask = tgtmask)
-    schedule = (torch.rand(labels.shape[1], labels.shape[0]) >= steps / 200000)
+    schedule = (torch.rand(labels.shape[1], labels.shape[0]) >= steps / 5000)
     for idx, batch in enumerate(outputs):
         for idx_ in range(len(batch)):
-            if schedule[idx, idx_].item():
+            if schedule[idx, idx_].item() or idx == 0:
                 outputs[idx,idx_,:] = labels[idx_, idx, :]
     outputs = self.decoder(outputs , memory = encoder_out, tgt_mask = tgtmask)
     return outputs

@@ -5,20 +5,26 @@
 """
 
 import os
-import tqdm
+from tqdm import tqdm
 import json
 import torch
 import random
 from pathlib import Path
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
+from config import my_config
  
  
 class myDataset(Dataset):
-  def __init__(self, phone_dir, embedding_dir, split="test"):
+  def __init__(self, config, split="test"):
     # data: [batch, label]
-    self.phone_dir = phone_dir
-    self.embedding_dir = embedding_dir
+    if split != "test":
+        self.phone_dir = config["phone_dir"]
+        self.embedding_dir = config["embedding_dir"]
+    else:
+        self.phone_dir = config["test_phone_dir"]
+        self.embedding_dir = config["test_embedding_dir"]
+
     phone_files = os.listdir(self.phone_dir)
     self.data = []
     self.names = []
@@ -48,8 +54,8 @@ class myDataset(Dataset):
             while i < len(has_place) and has_place[i][1] <= record_e:
                 i += 1
             
-      record_s, record_e = start, end
-      i += 1
+        record_s, record_e = start, end
+        i += 1
       size += 1
       self.data.append((idx, int(start), int(end)+1))
     print(size)

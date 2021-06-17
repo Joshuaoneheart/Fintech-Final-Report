@@ -1,19 +1,30 @@
+"""# Data
+
+## Dataset
+- Original dataset is [MATBN 中文廣播新聞語料庫]
+"""
+
 import os
-import json
 from tqdm import tqdm
+import json
 import torch
+import random
+from pathlib import Path
 from torch.utils.data import Dataset
+from torch.nn.utils.rnn import pad_sequence
 from config import my_config
+ 
+ 
 class myDataset(Dataset):
   def __init__(self, config, split="test"):
     # data: [batch, label]
-    self.config = config
     if split != "test":
         self.phone_dir = config["phone_dir"]
         self.embedding_dir = config["embedding_dir"]
     else:
         self.phone_dir = config["test_phone_dir"]
         self.embedding_dir = config["test_embedding_dir"]
+
     phone_files = os.listdir(self.phone_dir)
     self.data = []
     self.names = []
@@ -31,31 +42,48 @@ class myDataset(Dataset):
       has_place = []
       for embeddings in embedding_files:
         _, start, end, _ = embeddings.split(".")
-        size += 1
-        self.data.append((idx, int(start), int(end)+1))
-    print(f"Data size: {size}")      
+        has_place.append((start, end))
+      has_place.sort()
+      record_s, record_e = 0, 0
+      i = 0
+      while i < len(has_place):
+        print(i)
+        start, end = has_place[i]
+        if start != record_s and record_e != 0: 
+            size += 1
+            self.data.append((idx, int(record_s), int(record_e) + 1))
+            while i < len(has_place) and has_place[i][1] <= record_e:
+                i += 1
+            
+      record_s, record_e = start, end
+      i += 1
+      size += 1
+      self.data.append((idx, int(start), int(end)+1))
+    print(size)
+
+      
     
   def __len__(self):
     return len(self.data)
-
+ 
   def __getitem__(self, index):
-    idx, s, e = self.data[index]
-    name = self.names[idx]
-    with open(self.phone_dir + "/" + name + ".json", "r") as fp:
-        ph = json.load(fp)
-    with open(self.embedding_dir + "/" + name + "/" + name + "." + str(s) + "." + str(e - 1) + ".json", "r") as fp:
-        ems = json.load(fp)
-    length = len(ems)
-    probs = torch.FloatTensor(ph[s: e])
-    embeddings = torch.FloatTensor(ems)
-    return probs, embeddings, length
-
-"""## Dataloader
-- Split dataset into training dataset(90%) and validation dataset(10%).
-- Create dataloader to iterate the data.
-
-"""
-
+    while True:
+        try:
+            idx, s, e = self.data[index]
+            name = self.names[idx]
+            with open(self.phone_dir + "/" + name + ".json", "r") as fp:
+                ph = json.load(fp)
+            with open(self.embedding_dir + "/" + name + "/" + name + "." + str(s) + "." + str(e - 1) + ".json", "r") as fp:
+                ems = json.load(fp)
+            length = len(ems)
+            probs = torch.FloatTensor(ph[s: e])
+            embeddings = torch.FloatTensor(ems)
+            return probs, embeddings, length
+        except:
+            idx, s, e = self.data[index]
+            print(self.data[index])
+            print(self.embedding_dir + "/" + name + "/" + name + "." + str(s) + "." + str(e - 1) + ".json")
+            index += 1
 import torch
 from torch.utils.data import DataLoader, random_split
 

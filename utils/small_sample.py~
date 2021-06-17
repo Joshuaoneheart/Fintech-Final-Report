@@ -1,3 +1,9 @@
+"""# Data
+
+## Dataset
+- Original dataset is [MATBN 中文廣播新聞語料庫]
+"""
+
 import os
 from tqdm import tqdm
 import json
@@ -5,20 +11,22 @@ import torch
 import random
 from pathlib import Path
 from torch.utils.data import Dataset
+from torch.nn.utils.rnn import pad_sequence
+from config import my_config
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from config import my_config
+ 
  
 class myDataset(Dataset):
   def __init__(self, config, split="test"):
     # data: [batch, label]
-    self.config = config
     if split != "test":
         self.phone_dir = config["phone_dir"]
         self.embedding_dir = config["embedding_dir"]
     else:
         self.phone_dir = config["test_phone_dir"]
         self.embedding_dir = config["test_embedding_dir"]
+
     phone_files = os.listdir(self.phone_dir)
     self.data = []
     self.names = []
@@ -36,7 +44,6 @@ class myDataset(Dataset):
       has_place = []
       for embeddings in embedding_files:
         _, start, end, _ = embeddings.split(".")
-        '''
         has_place.append((start, end))
       has_place.sort()
       record_s, record_e = 0, 0
@@ -51,9 +58,8 @@ class myDataset(Dataset):
             
         record_s, record_e = start, end
         i += 1
-        '''
-        size += 1
-        self.data.append((idx, int(start), int(end)+1))
+      size += 1
+      self.data.append((idx, int(start), int(end)+1))
     print(size)
 
       
@@ -79,12 +85,6 @@ class myDataset(Dataset):
             print(self.data[index])
             print(self.embedding_dir + "/" + name + "/" + name + "." + str(s) + "." + str(e - 1) + ".json")
             index += 1
-
-"""## Dataloader
-- Split dataset into training dataset(90%) and validation dataset(10%).
-- Create dataloader to iterate the data.
-
-"""
 
 import torch
 from torch.utils.data import DataLoader, random_split
