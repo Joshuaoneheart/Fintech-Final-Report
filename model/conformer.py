@@ -32,7 +32,7 @@ class Seq_Encode(nn.Module):
         for idx_ in range(len(batch)):
             if schedule[idx, idx_].item() or idx == 0:
                 outputs[idx,idx_,:] = labels[idx_, idx, :]
-    outputs = self.decoder(outputs , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
+    outputs = self.decoder(outputs.detach() , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
     return outputs
 
   def generate(self, batch, labels, length, device, src_padding_mask, tgt_padding_mask):
