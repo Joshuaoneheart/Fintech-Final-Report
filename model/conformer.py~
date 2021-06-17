@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from conformer.encoder import ConformerEncoder
+from ../conformer.encoder import ConformerEncoder
 
 
 class Seq_Encode(nn.Module):

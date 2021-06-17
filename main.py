@@ -29,13 +29,7 @@ def za_seed(seed):
 za_seed(1126)
 
 """# Config"""
-
-my_config = {
-  "max_prob_len": 3072,
-  "max_embedding_len": 512,
-  "phone_dir": "./training/phone",
-  "embedding_dir": "./training/embedding"
-}
+from config import my_config 
 
 """# Data
 
@@ -52,7 +46,7 @@ from pathlib import Path
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 DATA_DIR = "./"
-from utils.data import top_k_top_p_filtering, collate_batch, myDataset
+from utils.data import collate_batch, myDataset
 """## Dataloader
 - Split dataset into training dataset(90%) and validation dataset(10%).
 - Create dataloader to iterate the data.
@@ -241,7 +235,6 @@ def parse_args():
   """arguments"""
   config = {
     "data_dir": "./Dataset",
-    "save_path": "conformer.ckpt",
     "batch_size": 1,
     "n_workers": 0,
     "valid_steps": 800000,
@@ -255,7 +248,6 @@ def parse_args():
 
 def main(
   data_dir,
-  save_path,
   batch_size,
   n_workers,
   valid_steps,
@@ -272,13 +264,13 @@ def main(
   print(f"[Info]: Finish loading data!",flush = True)
 
   model = Seq_Encode(device = device).to(device)
-  model.load_state_dict(torch.load(save_path))
+  model.load_state_dict(torch.load(my_config["ckpt_name"]))
   criterion = nn.CosineEmbeddingLoss()
   optimizer = AdamW(model.parameters(), lr=1e-5)
   scheduler = get_cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps)
   print(f"[Info]: Finish creating model!",flush = True)
 
-  pbar = tqdm(total=valid_steps / 100, ncols=0, desc="Train", unit=" step")
+  pbar = tqdm(total=total_steps / 100, ncols=0, desc="Train", unit=" step")
   best_loss = 10
   losses = 0
   for step in range(total_steps):
@@ -308,12 +300,9 @@ def main(
         )
         losses = 0
 
-
-      pbar = tqdm(total=valid_steps, ncols=0, desc="Train", unit=" step")
-
     # Save the best model so far.
     if (step + 1) % save_steps == 0:
-      torch.save(model.state_dict(), save_path)
+      torch.save(model.state_dict(), my_config["ckpt_name"])
       pbar.write(f"Step {step + 1}, best model saved. (loss={1 - best_loss:.4f})")
 
   pbar.close()

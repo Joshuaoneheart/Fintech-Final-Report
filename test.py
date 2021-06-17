@@ -3,6 +3,7 @@
 ## Dataset of inference
 """
 
+from config import my_config
 import os
 import json
 import torch
@@ -51,7 +52,7 @@ def main(
   )
   print(f"[Info]: Finish loading data!",flush = True)
 
-  model.load_state_dict(torch.load("model.ckpt"))
+  model.load_state_dict(torch.load(my_config["ckpt_name"]))
   model.eval()
   print(f"[Info]: Finish creating model!",flush = True)
 
