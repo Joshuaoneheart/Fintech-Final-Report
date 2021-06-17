@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from conformer.encoder import ConformerEncoder
 
 
 class Seq_Encode(nn.Module):
@@ -19,19 +20,21 @@ class Seq_Encode(nn.Module):
     self.enc_2_dec = nn.Linear(512, 768)
     self.decoder = nn.TransformerDecoder(self.decoderlayer, num_layers = 3)
 
-  def forward(self, batch, labels, steps, device):
+  def forward(self, batch, labels, steps, device, src_padding_mask, tgt_padding_mask):
     out = self.prenet(batch)
     encoder_out, _ = self.encoder(out, out.size(1))
     encoder_out = self.enc_2_dec(encoder_out)
     tgtmask = (torch.triu(torch.ones(self.config["max_embedding_len"], self.config["max_embedding_len"])) == 1).transpose(0, 1)
     tgtmask = tgtmask.float().masked_fill(tgtmask == 0, float("-inf")).masked_fill(tgtmask == 1, float(0.0)).to(device)
-    outputs = self.decoder(labels.permute(1, 0, 2) , memory = encoder_out, tgt_mask = tgtmask)
+    outputs = self.decoder(labels.permute(1, 0, 2) , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
     schedule = (torch.rand(labels.shape[1], labels.shape[0]) >= steps / 5000)
+    i = 0
     for idx, batch in enumerate(outputs):
         for idx_ in range(len(batch)):
             if schedule[idx, idx_].item() or idx == 0:
                 outputs[idx,idx_,:] = labels[idx_, idx, :]
-    outputs = self.decoder(outputs , memory = encoder_out, tgt_mask = tgtmask)
+                i += 1
+    outputs = self.decoder(outputs.detach() , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
     return outputs
 
   def generate(self, batch, labels, length, device, src_padding_mask, tgt_padding_mask):
