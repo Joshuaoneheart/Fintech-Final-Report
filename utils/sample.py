@@ -5,13 +5,20 @@ import torch
 import random
 from pathlib import Path
 from torch.utils.data import Dataset
+import torch.nn.functional as F
 from torch.distributions import Categorical
+from config import my_config
  
 class myDataset(Dataset):
-  def __init__(self, phone_dir, embedding_dir, split="test"):
+  def __init__(self, config, split="test"):
     # data: [batch, label]
-    self.phone_dir = phone_dir
-    self.embedding_dir = embedding_dir
+    self.config = config
+    if split != "test":
+        self.phone_dir = config["phone_dir"]
+        self.embedding_dir = config["embedding_dir"]
+    else:
+        self.phone_dir = config["test_phone_dir"]
+        self.embedding_dir = config["test_embedding_dir"]
     phone_files = os.listdir(self.phone_dir)
     self.data = []
     self.names = []
@@ -117,7 +124,8 @@ def collate_batch(batch):
   probs, embeddings, lengths = zip(*batch)
   # Because we train the model batch by batch, we need to pad the features in the same batch to make their lengths the same.
   probs_ = []
-  src_masks = []
+  src_padding_mask = torch.zeros((len(probs), my_config["max_prob_len"]))
+  tgt_padding_mask = torch.zeros((len(probs), my_config["max_embedding_len"]))
   for idx, prob in enumerate(probs):
       ps = []
       for p in prob:
@@ -130,6 +138,7 @@ def collate_batch(batch):
       
   for idx, prob in enumerate(probs_):
       if probs_[idx].shape[1] < my_config["max_prob_len"]:
+          src_padding_mask[idx, prob.shape[1]:] = torch.ones(1, my_config["max_prob_len"] - prob.shape[1])
           probs_[idx] = torch.cat([probs_[idx],torch.Tensor([[[0 if i != 233 else 1 for i in range(234)] for _ in range(my_config["max_prob_len"] - probs_[idx].shape[1])]])],dim=1)
       else:
           probs_[idx] = probs_[idx][:,:my_config["max_prob_len"],:]
@@ -137,8 +146,9 @@ def collate_batch(batch):
 
   embeddings = list(embeddings)
   for idx, embedding in enumerate(embeddings):
+    tgt_padding_mask[idx, embeddings[idx].shape[0]:] = torch.ones(1, my_config["max_embedding_len"] - embeddings[idx].shape[0])
     embeddings[idx] = embedding.unsqueeze(0)
     embeddings[idx] = torch.cat([embeddings[idx],torch.Tensor([[[0 for i in range(768)] for _ in range(my_config["max_embedding_len"] - embeddings[idx].shape[1])]])],dim=1)
   embeddings = torch.cat(embeddings, dim=0)
 
-  return probs, embeddings, lengths
+  return probs, embeddings, lengths, src_padding_mask, tgt_padding_mask
