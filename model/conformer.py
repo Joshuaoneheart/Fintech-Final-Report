@@ -47,7 +47,7 @@ class Seq_Encode(nn.Module):
     out = self.prenet(batch)
     encoder_out, _ = self.encoder(out, out.size(1))
     encoder_out = self.enc_2_dec(encoder_out)
-    outputs = torch.zeros(length[0], 1, 768).float().to(device)
+    outputs = torch.zeros(length[0] + 1, 1, 768).float().to(device)
     start_ = torch.zeros(1, 1, 768).to(device)
     outputs[0, :, :] = start_
     for i in range(1, length[0] + 1):
