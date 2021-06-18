@@ -241,7 +241,7 @@ def parse_args():
     "n_workers": 0,
     "valid_steps": 800000,
     "warmup_steps": 1000,
-    "save_steps": 10000,
+    "save_steps": 2000,
     "total_steps": 800000,
   }
 
@@ -258,7 +258,7 @@ def main(
   save_steps,
 ):
   """Main function."""
-  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
   print(f"[Info]: Use {device} now!")
 
   train_loader, valid_loader = get_dataloader(data_dir, batch_size, n_workers)
@@ -266,7 +266,7 @@ def main(
   print(f"[Info]: Finish loading data!",flush = True)
 
   model = Seq_Encode(my_config, device = device).to(device)
-  #model.load_state_dict(torch.load(my_config["ckpt_name"]))
+  model.load_state_dict(torch.load(my_config["ckpt_name"]))
   criterion = nn.CosineEmbeddingLoss()
   optimizer = AdamW(model.parameters(), lr=1e-5)
   scheduler = get_cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps)
@@ -275,6 +275,7 @@ def main(
   pbar = tqdm(total=total_steps / 100, ncols=0, desc="Train", unit=" step")
   best_loss = 10
   losses = 0
+  accu_step = my_config["accu_step"]
   for step in range(total_steps):
     # Get data
     try:
@@ -286,12 +287,14 @@ def main(
     loss = model_fn(batch, model, criterion, device, step)
     batch_loss = loss.item()
     losses += batch_loss
-
+    loss /= accu_step
     # Updata model
     loss.backward()
-    optimizer.step()
-    scheduler.step()
-    optimizer.zero_grad()
+    # gradient accumulation
+    if (step + 1) % accu_step:
+        optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad()
     
     # Log
     if (step+1) % 100 == 0:
