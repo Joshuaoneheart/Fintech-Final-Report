@@ -28,16 +28,13 @@ class Seq_Encode(nn.Module):
     tgtmask = tgtmask.float().masked_fill(tgtmask == 0, float("-inf")).masked_fill(tgtmask == 1, float(0.0)).to(device)
     start_ = torch.zeros(1, 1, 768).to(device)
     outputs = self.decoder(torch.cat([start_, labels.permute(1, 0, 2)[:-1, :, :]], dim = 0) , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
-    schedule = (torch.rand(labels.shape[1], labels.shape[0]) >= (steps / 400000) % 1 - 0.3)
+    schedule = (torch.rand(labels.shape[1], labels.shape[0]) >= min((steps / 400000) + 0.2, 0.7))
     outputs = torch.cat([start_, outputs],dim = 0)[:-1, :, :]
-    i = 0
     for idx, batch in enumerate(outputs):
         for idx_ in range(len(batch)):
             if schedule[idx, idx_].item() and idx + 1 < self.config["max_embedding_len"]:
                 outputs[idx + 1,idx_,:] = labels[idx_, idx, :]
                 i += 1
-    with open("record_schedule", "w+") as fp:
-        print(i, file=fp)
     outputs = self.decoder(outputs.detach() , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
     return outputs
 
