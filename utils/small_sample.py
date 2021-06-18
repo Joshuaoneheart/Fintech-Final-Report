@@ -146,7 +146,7 @@ def collate_batch(batch):
 
   embeddings = list(embeddings)
   for idx, embedding in enumerate(embeddings):
-    tgt_padding_mask[idx, embeddings[idx].shape[0]:] = torch.ones(1, my_config["max_embedding_len"] - embeddings[idx].shape[0])
+    tgt_padding_mask[idx, embeddings[idx].shape[0] + 1:] = torch.ones(1, my_config["max_embedding_len"] - embeddings[idx].shape[0] - 1)
     embeddings[idx] = embedding.unsqueeze(0)
     embeddings[idx] = torch.cat([embeddings[idx],torch.Tensor([[[0 for i in range(768)] for _ in range(my_config["max_embedding_len"] - embeddings[idx].shape[1])]])],dim=1)
   embeddings = torch.cat(embeddings, dim=0)
