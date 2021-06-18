@@ -34,7 +34,6 @@ class Seq_Encode(nn.Module):
         for idx_ in range(len(batch)):
             if schedule[idx, idx_].item() and idx + 1 < self.config["max_embedding_len"]:
                 outputs[idx + 1,idx_,:] = labels[idx_, idx, :]
-                i += 1
     outputs = self.decoder(outputs.detach() , memory = encoder_out, tgt_mask = tgtmask, tgt_key_padding_mask = tgt_padding_mask)
     return outputs
 
