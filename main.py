@@ -291,7 +291,7 @@ def main(
     # Updata model
     loss.backward()
     # gradient accumulation
-    if (step + 1) % accu_step:
+    if ((step + 1) % accu_step) == 0:
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad()
